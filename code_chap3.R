@@ -56,7 +56,7 @@ fit <- do.call("DEoptim", list(myCostFn, lower, upper, myOptions))
 bestPar <- fit$optim$bestmem # parameter estimates in log 10 scale
 names(bestPar) <- myParams
 out <- ode(myStates, modelTime, myModel, 10^bestPar)
-png("fitted_model.png")
+png("./plots/fitted_model.png")
 plot(out[, "time"], log10(out[, "V"]), type = "l") # in log 10
 points(myData$time, myData$V)
 dev.off()
@@ -83,14 +83,42 @@ myProfile <- function(lower, upper, bestPar) {
   return(pro.ll)
 }
 
-# outProfiles <- myProfile(lower, upper, bestPar)
+outProfiles <- myProfile(lower, upper, bestPar)
 
 # form 26 points
-png("profile_likelihood.png")
+png("./plots/profile_likelihood.png")
 par(mfrow = c(2, 2))
 sapply(1:4, function(x) plot(outProfiles[[x]], xlab = myParams[x], ylab = 'RMSE'))
 dev.off()
 
+## bootstrapping
+myBoot <- function(numboot = 1000, numpar = 4) {
+  # numpar: number of parameters in the model
+  # numboot: number of bootstrap samples
+  results <- matrix(NA, numboot, numpar)
+  original <- myData
+  sampling <- function(x) sample(original$V[original$time==x], length(original$V[original$time==x]), replace = 1)
+  for (i in 1:numboot) {
+    message("Bootstrapping sample ", i)
+    tmp <- sapply(unique(original$time), sampling)
+    myData <- cbind(original$time, as.vector(tmp))
+    DEarguments <- list(myCostFn, lower, upper, myOptions)
+    fit <- do.call("DEoptim", DEarguments)
+    results[i, ] <- fit$optim$bestmem
+  }
+  results <- as.data.frame(results)
+  colnames(results) <- myParams
+  return(results)
+}
+
+bootResults <- myBoot()  
+
+## visualize the results
+par(mfrow = c(2,2))
+# histogram of boot results
+sapply(1:4, function(x) hist(bootResults[, x]) )
+# confidence interval of each parameter
+apply(bootResults, 2, quantile, probs = c(.025,.975))
 
 
 
