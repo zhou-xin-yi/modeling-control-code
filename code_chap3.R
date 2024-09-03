@@ -1,6 +1,7 @@
 # packages
 library("deSolve")
 library("DEoptim")
+library("FME")
 
 # virus dynamics model for acute infections
 myModel <- function(t, state, parameters) {
@@ -44,11 +45,6 @@ upper = log10(c(1e-3, 1e+2, 1e+2, 1e+2))
 # optimizer setting
 myOptions <- DEoptim.control(itermax = 10000, steptol = 50, reltol = 1e-8)
 
-# parallel mode ?
-myOptions <- DEoptim.control(parallelType = 1, packages = c("deSolve"), 
-                             parVar = c("myModel", "myStates", "lower", "upper", "modelTime", "myData"), 
-                             itermax = 10000, steptol = 50, reltol = 1e-8)
-
 # fit the model by calling the optimizer and cost function
 fit <- do.call("DEoptim", list(myCostFn, lower, upper, myOptions))
 
@@ -56,12 +52,66 @@ fit <- do.call("DEoptim", list(myCostFn, lower, upper, myOptions))
 bestPar <- fit$optim$bestmem # parameter estimates in log 10 scale
 names(bestPar) <- myParams
 out <- ode(myStates, modelTime, myModel, 10^bestPar)
+
 png("./plots/fitted_model.png")
 plot(out[, "time"], log10(out[, "V"]), type = "l") # in log 10
 points(myData$time, myData$V)
 dev.off()
+###################################################
+### Sensitivity functions 
+###################################################
 
-## profile likelihood
+fluCost <- function (bestPar) {
+  out <- ode(myStates, modelTime, myModel, 10^bestPar)
+  return(cost <- modCost(model = out, obs = myData))
+}
+
+fluCost(bestPar)$model
+
+Sfun <- sensFun(fluCost, bestPar)
+summary(Sfun)
+
+pairs(Sfun,which=c("V"),col=c("blue"))
+
+# plot
+plot(Sfun, which = c("V"), type = "l", lwd = 2)
+
+## the sensitivity parameters 
+parRanges <- data.frame(min = log10(0.8*(10^bestPar)), max = log10(1.2*(10^bestPar))) 
+rownames(parRanges) <- myParams
+parRanges 
+
+tout <- modelTime
+
+## sensitivity to V; equally-spaced parameters ("grid") 
+solveFlu <- function(pars) { 
+  derivs <- function(t,state,pars) { # returns rate of change
+    with (as.list(c(state,pars)), {  
+      dU = - myBeta*U*V
+      dI = myBeta*U*V - myDelta*I
+      dV = myP*I - myC*V
+      return(list(c(dU, dI, dV))) 
+    }) 
+  } 
+  state <- c(U = 10^6, I = 0, V = 10)
+  tout <- seq(from = 0, to = 10, by = 0.01)
+  ## ode solves the model by integration ... 
+  return(as.data.frame(ode(y = state, times = tout, func = derivs, 
+                           parms = 10^pars))) 
+} 
+
+## Plot all variables; plot mean +- sd, min max 
+mf <- par(mfrow = c(2, 2)) 
+Sens <- summary(sensRange(func = solveFlu, parms = bestPar, dist = "unif", 
+                          sensvar = c("V"), parRange = parRanges[4,], num = 10)) 
+plot(Sens, log = "y", xlab = "Time (days)", ylab = "log10V", 
+     main = "Sensitivity to c", mfrow = NULL) 
+par(mf)
+title("Viral load sensitivity (varying the respective parameter by 20%)", line = -1, outer = TRUE)
+
+###################################################
+### Profile Likelihood
+###################################################
 myProfile <- function(lower, upper, bestPar) {
   pro.ll <-  NULL
   for (v in 1:length(bestPar)) {
