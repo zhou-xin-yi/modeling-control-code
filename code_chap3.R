@@ -141,7 +141,9 @@ par(mfrow = c(2, 2))
 sapply(1:4, function(x) plot(outProfiles[[x]], xlab = myParams[x], ylab = 'RMSE'))
 dev.off()
 
-## bootstrapping
+###################################################
+### Bootstrapping
+###################################################
 myBoot <- function(numboot = 1000, numpar = 4) {
   # numpar: number of parameters in the model
   # numboot: number of bootstrap samples
