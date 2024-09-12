@@ -97,6 +97,11 @@ nll <- function (par) {
   sibr.nll(beta=par[1],gamma=1/3,delta=1/3,
            I.0=1,p=0.5,k=100)
 }
+
+nll <- function (par) {
+  sibr.nll(beta=par[1],I.0=1,p=0.5,k=100)
+}
+
 betacurve <- data.frame(beta=seq(1/3,10,length=100)) # range of beta
 within(betacurve,nll <- sapply(beta,nll)) -> betacurve
 ggplot(data=betacurve,mapping=aes(x=beta,y=nll))+geom_line()
@@ -143,7 +148,9 @@ fit <- mle2(sibr.nll,
             fixed=list(delta=1/3,k=100,I.0=1))
 coef(fit)
 pfit <- profile(fit)
+#png("../plots/bbmle.png")
 plot(pfit)
+#dev.off()
 confint(pfit)
 
 # simulate the model
