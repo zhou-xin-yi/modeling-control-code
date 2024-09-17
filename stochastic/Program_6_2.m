@@ -120,7 +120,8 @@ X=pop(1); Y=pop(2);
 
 dPop=zeros(2,1);
 
-dPop(1)= (mu*N + sqrt(mu*N)*noise(1)) - (beta*X*Y/N + sqrt(beta*X*Y/N)*noise(2)) - (mu*Y + sqrt(mu*Y)*noise(3));
+% dPop(1)= (mu*N + sqrt(mu*N)*noise(1)) - (beta*X*Y/N + sqrt(beta*X*Y/N)*noise(2)) - (mu*Y + sqrt(mu*Y)*noise(3));
+dPop(1)= (mu*N + sqrt(mu*N)*noise(1)) - (beta*X*Y/N + sqrt(beta*X*Y/N)*noise(2)) - (mu*X + sqrt(mu*X)*noise(3));
 dPop(2)= (beta*X*Y/N + sqrt(beta*X*Y/N)*noise(2)) - (gamma*Y + sqrt(gamma*Y)*noise(4)) - (mu*Y + sqrt(mu*Y)*noise(5));
 
 
