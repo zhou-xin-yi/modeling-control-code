@@ -17,7 +17,7 @@ function [t,X,Y] = Program_6_1(beta,noise,gamma,mu,X0,Y0,N0,Step,MaxTime)
 % Sets up default parameters if necessary.
 if nargin == 0
    beta=1.0;
-   noise=5;
+   noise=10;
    gamma=1/10.0;
    mu=1/(50*365.0);
    X0=1e5;
