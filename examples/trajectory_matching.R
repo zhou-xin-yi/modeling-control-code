@@ -98,10 +98,6 @@ nll <- function (par) {
            I.0=1,p=0.5,k=100)
 }
 
-nll <- function (par) {
-  sibr.nll(beta=par[1],I.0=1,p=0.5,k=100)
-}
-
 betacurve <- data.frame(beta=seq(1/3,10,length=100)) # range of beta
 within(betacurve,nll <- sapply(beta,nll)) -> betacurve
 ggplot(data=betacurve,mapping=aes(x=beta,y=nll))+geom_line()
@@ -110,6 +106,34 @@ ggplot(data=betacurve,mapping=aes(x=beta,y=nll))+geom_line()
 fit <- optim(fn=nll,par=2,method="Brent",lower=1.5,upper=3)
 fit$par # beta
 fit$value # MLE
+
+
+###
+betacurve <- data.frame(beta=seq(1/3,10,length=100)) # range of beta
+gamma <- vector("numeric", nrow(betacurve))
+sibr.nll <- function (beta, gamma, delta, I.0, p, k) {
+  times <- c(flu$day[1]-1,flu$day)
+  ode.params <- c(beta=beta,gamma=gamma,delta=delta)
+  xstart <- c(S=763-I.0,I=I.0,B=0)
+  out <- ode(
+    func=sibr.model,
+    y=xstart,
+    times=times,
+    parms=ode.params
+  )
+  ## 'out' is a matrix
+  ll <- dnbinom(x=flu$flu,size=params["k"],mu=p*out[-1,"B"],log=TRUE)
+  # return
+  -sum(ll)
+}
+for (i in 1:length(betacurve)) {
+  fit <- mle2(sibr.nll,parameters = c(betacurve$beta[i], ),method="Brent",lower = 0,upper = 1)
+  gamma[i] <- coef(fit)[2]
+}
+
+
+ggplot(data=betacurve,mapping=aes(x=beta,y=nll))+geom_line()
+
 
 # confidence interval
 crit.lr <- pchisq(q=0.05,df=1,lower.tail=FALSE)
@@ -152,6 +176,7 @@ pfit <- profile(fit)
 plot(pfit)
 #dev.off()
 confint(pfit)
+
 
 # simulate the model
 mle <- coef(fit)
